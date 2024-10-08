@@ -7,28 +7,34 @@ module State =
     let init () =
         { Columns =
             [ { Name = "a"
+                MatrixIndex = 0
                 Type = ColumnType.Values }
               { Name = "b"
+                MatrixIndex = 1
                 Type = ColumnType.Values } ]
-          Values = DenseMatrix.init 2 2 (fun i j -> float (i + j))
+          Matrix = DenseMatrix.init 4 2 (fun i j -> i)
+          MatrixLastGenerationId = 0u
         }
 
+    let updateMatrix model matrixManipMsg =
+        let matrix = model.Matrix
+
+        match matrixManipMsg with
+        | RawMatrixManipMsg.AddRow -> matrix.InsertRow(matrix.RowCount, matrix.ColumnCount |> Array.zeroCreate |> Vector.Build.Dense)
+        | RawMatrixManipMsg.RemoveRow rowIdx -> matrix.RemoveRow(rowIdx)
+        | RawMatrixManipMsg.AddColumn columnInfo -> matrix.InsertColumn(matrix.ColumnCount, matrix.RowCount |> Array.zeroCreate |> Vector.Build.Dense)
+        | RawMatrixManipMsg.RemoveColumn columnIdx -> matrix.RemoveColumn(columnIdx)
+        |> fun matrix -> { model with Matrix = matrix }
+
     let update msg model =
+        printfn "%A" msg
+
         match msg with
-        | AddColumn columnInfo -> { model with Columns = List.append model.Columns [columnInfo] }
-        | RemoveColumn columnName -> { model with Columns = model.Columns |> List.filter (fun c -> c.Name <> columnName) }
-        | AddRow ->
-            let values =
-                model.Values.InsertRow(
-                    model.Values.RowCount,
-                    model.Values.ColumnCount
-                    |> Array.zeroCreate
-                    |> Vector.Build.Dense
-                )
-            { model with Values = values }
-        | RemoveRow rowIdx -> { model with Values = model.Values.RemoveRow(rowIdx) }
-        | EditValue (columnName, rowIdx, value) ->
-            let colIdx = model.Columns |> List.findIndex (fun c -> c.Name = columnName)
-            let values = model.Values.Clone()
-            values.[rowIdx, colIdx] <- value
-            { model with Values = values }
+        | Msg.RawMatrixManip matrixManipMsg -> updateMatrix model matrixManipMsg
+        | Msg.CellEdited (columnIdx, rowIdx, value) ->
+            let matrix = model.Matrix
+            let newValue = float value // TODO: Implement Jace.Net
+            matrix.[rowIdx, columnIdx] <- newValue
+            { model with
+                Matrix = matrix
+                MatrixLastGenerationId = model.MatrixLastGenerationId + 1u }

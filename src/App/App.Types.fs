@@ -9,15 +9,23 @@ type ColumnType =
 
 type Column =
     { Name: string
+      /// The index of the column in the matrix
+      MatrixIndex: int
       Type: ColumnType }
 
-type Msg =
-    | AddColumn of Column
-    | RemoveColumn of columnName: string
+[<RequireQualifiedAccess>]
+type RawMatrixManipMsg =
     | AddRow
     | RemoveRow of rowIdx: int
-    | EditValue of columnName: string * rowIdx: int * float
+    | AddColumn of Column
+    | RemoveColumn of columnIdx: int
+
+[<RequireQualifiedAccess>]
+type Msg =
+    | CellEdited of columnIdx: int * rowIdx: int * string
+    | RawMatrixManip of RawMatrixManipMsg
 
 type Model =
     { Columns: Column list
-      Values: Matrix<float> }
+      Matrix: Matrix<float>
+      MatrixLastGenerationId: uint }

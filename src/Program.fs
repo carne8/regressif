@@ -12,9 +12,16 @@ type MainWindow() as this =
     inherit HostWindow()
 
     do
+        #if DEBUG
+        this.AttachDevTools()
+        #endif
+
+        this.Width <- 400.
+        this.Height <- 400.
+
         Program.mkSimple State.init State.update View.view
+        // |> Program.withConsoleTrace
         |> Program.withHost this
-        // |> Program.withSubscription subscriptions
         |> Program.run
 
 
@@ -31,12 +38,18 @@ type App() =
         | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime -> desktopLifetime.MainWindow <- MainWindow()
         | _ -> ()
 
+        base.OnFrameworkInitializationCompleted()
+
 
 module Program =
-    [<EntryPoint>]
-    let main argv =
+    [<CompiledName "BuildAvaloniaApp">]
+    let buildAvaloniaApp () =
         AppBuilder
             .Configure<App>()
             .UsePlatformDetect()
-            .UseSkia()
-            .StartWithClassicDesktopLifetime(argv)
+            .WithInterFont()
+            .LogToTrace(areas = Array.empty)
+
+    [<EntryPoint; System.STAThread>]
+    let main argv =
+        buildAvaloniaApp().StartWithClassicDesktopLifetime(argv)
