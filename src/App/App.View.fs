@@ -28,11 +28,7 @@ let view model dispatch =
                 TabItem.header "Plot"
                 TabItem.content (
                     Plot.create [
-                        // TODO: Add ability to choose which columns to plot (which columns to use as X and Y)
-                        Plot.points (
-                            model.Matrix.Column(0) |> Seq.toArray,
-                            model.Matrix.Column(1) |> Seq.toArray
-                        )
+                        Plot.points (model |> Model.getColumnsToPlot)
                     ]
                 )
             ]

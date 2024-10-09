@@ -7,8 +7,12 @@ type ColumnType =
     | Values
     | Formula of string
 
+type ColumnName =
+    | ColumnName of string
+    static member raw (ColumnName value) = value
+
 type Column =
-    { Name: string
+    { Name: ColumnName
       /// The index of the column in the matrix
       MatrixIndex: int
       Type: ColumnType }
@@ -28,4 +32,20 @@ type Msg =
 type Model =
     { Columns: Column list
       Matrix: Matrix<float>
-      MatrixLastGenerationId: uint }
+      MatrixLastGenerationId: uint
+      ColumnsToPlot: ColumnName * ColumnName }
+
+    static member private getMatrixColumnFromColumnName columnName model =
+        model.Columns
+        |> List.tryFind (_.Name >> (=) columnName)
+        |> Option.map (
+            _.MatrixIndex
+            >> model.Matrix.Column
+            >> Seq.toArray
+        )
+        |> Option.defaultValue Array.empty
+
+
+    static member getColumnsToPlot model =
+        Model.getMatrixColumnFromColumnName (model.ColumnsToPlot |> fst) model,
+        Model.getMatrixColumnFromColumnName (model.ColumnsToPlot |> snd) model

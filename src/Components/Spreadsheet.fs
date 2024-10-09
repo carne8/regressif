@@ -32,11 +32,12 @@ type Cell(
 
     let textBox = TextBox()
 
+    let mutable propertyInitialized = false
     let mutable beforeEditText = ""
     let evt = new Event<CellOnEditedArgs>()
 
     let onEditFinished _ =
-        match beforeEditText = textBox.Text with
+        match not propertyInitialized || beforeEditText = textBox.Text with
         | true -> ()
         | false ->
             // Value changed
@@ -52,7 +53,7 @@ type Cell(
             |> evt.Trigger
 
     do
-        textBox.LostFocus.Add(onEditFinished) // TODO: Some events are fired unexpectedly
+        textBox.LostFocus.Add(onEditFinished)
         textBox.KeyDown.Add(fun evt ->
             match evt.Key = Input.Key.Enter with
             | true -> onEditFinished()
@@ -76,7 +77,14 @@ type Cell(
         base.OnPropertyChanged(change: AvaloniaPropertyChangedEventArgs)
 
         match change.Property.Name with
-        | "Text" -> textBox.Text <- change.NewValue |> unbox<string>
+        | "Text" ->
+            match propertyInitialized with
+            | true -> ()
+            | false ->
+                propertyInitialized <- true
+                beforeEditText <- change.NewValue |> unbox<string>
+
+            textBox.Text <- change.NewValue |> unbox<string>
         | _ -> ()
 
 
@@ -86,9 +94,7 @@ type Spreadsheet() as this =
     let evt = new Event<CellOnEditedArgs>()
     let grid = DataGrid()
 
-    do
-        grid.ColumnWidth <- DataGridLength.SizeToHeader
-        this.Content <- grid
+    do this.Content <- grid
 
     member _.CellTemplate columnIdx =
         FuncDataTemplate<Row>(fun row _nameScope ->
@@ -125,7 +131,7 @@ type Spreadsheet() as this =
             |> unbox<Column list>
             |> List.iteri (fun columnIdx column ->
                 let el = DataGridTemplateColumn(
-                    Header = column.Name,
+                    Header = (column.Name |> ColumnName.raw),
                     CellTemplate = this.CellTemplate columnIdx,
                     CellEditingTemplate = this.CellTemplate columnIdx
                 )

@@ -6,14 +6,15 @@ open MathNet.Numerics.LinearAlgebra
 module State =
     let init () =
         { Columns =
-            [ { Name = "a"
+            [ { Name = ColumnName "a"
                 MatrixIndex = 0
                 Type = ColumnType.Values }
-              { Name = "b"
+              { Name = ColumnName "b"
                 MatrixIndex = 1
                 Type = ColumnType.Values } ]
           Matrix = DenseMatrix.init 4 2 (fun i j -> i)
           MatrixLastGenerationId = 0u
+          ColumnsToPlot = ColumnName "a", ColumnName "b"
         }
 
     let updateMatrix model matrixManipMsg =
