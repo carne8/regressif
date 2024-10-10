@@ -19,7 +19,7 @@ type MainWindow() as this =
         this.Width <- 400.
         this.Height <- 400.
 
-        Program.mkSimple State.init State.update View.view
+        Program.mkProgram State.init State.update View.view
         // |> Program.withConsoleTrace
         |> Program.withHost this
         |> Program.run

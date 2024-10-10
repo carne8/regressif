@@ -23,6 +23,7 @@ type RawMatrixManipMsg =
     | RemoveRow of rowIdx: int
     | AddColumn of Column
     | RemoveColumn of columnIdx: int
+    | ReplaceValue of columnIdx: int * rowIdx: int * float
 
 [<RequireQualifiedAccess>]
 type Msg =
@@ -33,7 +34,8 @@ type Model =
     { Columns: Column list
       Matrix: Matrix<float>
       MatrixLastGenerationId: uint
-      ColumnsToPlot: ColumnName * ColumnName }
+      ColumnsToPlot: ColumnName * ColumnName
+      CalculationEngine: Jace.CalculationEngine }
 
     static member private getMatrixColumnFromColumnName columnName model =
         model.Columns
