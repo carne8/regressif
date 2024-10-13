@@ -140,11 +140,10 @@ type Spreadsheet() as this =
             )
 
         | "Data" -> grid.ItemsSource <- change.NewValue |> unbox<Array>
-
         | _ -> ()
 
 
-    // Avalonia.FuncUI
+    // Avalonia FuncUI
     static member create attrs = ViewBuilder.Create<Spreadsheet>(attrs)
     static member data<'t when 't :> Spreadsheet> (value: float array array) : IAttr<'t> =
         let newValue =

@@ -85,3 +85,11 @@ module State =
         | Msg.RawMatrixManip matrixManipMsg -> updateMatrix model matrixManipMsg, Cmd.none
         | Msg.CellEdited (columnIdx, rowIdx, value) ->
             model, Cmds.computeExpression value (rowIdx, columnIdx) model
+
+        | Msg.ChangePlotAxis (isXAxis, newColumnName) ->
+            let columnsToPlot =
+                match isXAxis with
+                | true -> newColumnName, model.ColumnsToPlot |> snd
+                | false -> model.ColumnsToPlot |> fst, newColumnName
+
+            { model with ColumnsToPlot = columnsToPlot }, Cmd.none

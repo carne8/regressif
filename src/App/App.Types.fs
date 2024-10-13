@@ -29,6 +29,7 @@ type RawMatrixManipMsg =
 type Msg =
     | CellEdited of columnIdx: int * rowIdx: int * string
     | RawMatrixManip of RawMatrixManipMsg
+    | ChangePlotAxis of isXAxis: bool * ColumnName
 
 type Model =
     { Columns: Column list

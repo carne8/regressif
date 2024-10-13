@@ -31,7 +31,7 @@ type App() =
     override this.Initialize() =
         this.Styles.Add(FluentTheme())
         this.Styles.Load "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"
-        this.RequestedThemeVariant <- Styling.ThemeVariant.Dark
+        this.RequestedThemeVariant <- Styling.ThemeVariant.Light
 
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with
