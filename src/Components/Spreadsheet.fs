@@ -89,12 +89,14 @@ type Cell(
 
 
 type Spreadsheet() as this =
-    inherit UserControl ()
+    inherit UserControl()
 
     let evt = new Event<CellOnEditedArgs>()
     let grid = DataGrid()
 
-    do this.Content <- grid
+    do
+        grid.ColumnWidth <- DataGridLength.SizeToCells
+        this.Content <- grid
 
     member _.CellTemplate columnIdx =
         FuncDataTemplate<Row>(fun row _nameScope ->
@@ -107,7 +109,7 @@ type Spreadsheet() as this =
         )
 
     static member DataProperty: StyledProperty<Array> = AvaloniaProperty.Register<Spreadsheet, Array>("Data", Array.empty)
-    static member ColumnsProperty = AvaloniaProperty.Register<Spreadsheet, Column list>("Columns", List.empty)
+    static member ColumnsProperty = AvaloniaProperty.Register<Spreadsheet, Dictionary<ColumnName, Column>>("Columns", System.Collections.Generic.Dictionary())
     static member OnEditedEvent : RoutedEvent<CellOnEditedArgs> =
         RoutedEvent.Register<Spreadsheet, CellOnEditedArgs>("OnEdited", RoutingStrategies.Bubble)
 
@@ -128,10 +130,12 @@ type Spreadsheet() as this =
             grid.Columns.Clear()
 
             change.NewValue
-            |> unbox<Column list>
-            |> List.iteri (fun columnIdx column ->
+            |> unbox<Dictionary<ColumnName, Column>>
+            |> Seq.iteri (fun columnIdx kv ->
+                let columnName = kv.Key
+
                 let el = DataGridTemplateColumn(
-                    Header = (column.Name |> ColumnName.raw),
+                    Header = (columnName |> ColumnName.raw),
                     CellTemplate = this.CellTemplate columnIdx,
                     CellEditingTemplate = this.CellTemplate columnIdx
                 )
@@ -155,8 +159,8 @@ type Spreadsheet() as this =
 
         AttrBuilder<'t>.CreateProperty<Array>(Spreadsheet.DataProperty, newValue, ValueNone)
 
-    static member columns<'t when 't :> Spreadsheet> (value: Column list) : IAttr<'t> =
-        AttrBuilder<'t>.CreateProperty<Column list>(Spreadsheet.ColumnsProperty, value, ValueNone)
+    static member columns<'t when 't :> Spreadsheet> (value: Dictionary<ColumnName, Column>) : IAttr<'t> =
+        AttrBuilder<'t>.CreateProperty<Dictionary<ColumnName, Column>>(Spreadsheet.ColumnsProperty, value, ValueNone)
 
     // Doesn't fire when the cell is edited
     // static member onEdited<'t when 't :> Spreadsheet>(func: CellOnEditedArgs -> unit, ?subPatchOptions) =

@@ -3,6 +3,7 @@ module Regressif.View
 open Regressif.Components
 open Avalonia
 open Avalonia.Controls
+open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 
 let textButton text onClick =
@@ -15,30 +16,89 @@ let textButton text onClick =
         )
     ]
 
-let columnSelector isXAxis (columns: Column list) dispatch =
-    StackPanel.create [
+let columnSelector
+    isXAxis
+    (columns: Dictionary<ColumnName, Column>)
+    (xSelectedColumn: ColumnName,
+     ySelectedColumn: ColumnName)
+    dispatch
+    =
+    let selectedColumnName =
+        match isXAxis with
+        | true -> xSelectedColumn
+        | false -> ySelectedColumn
+
+    let selectedColumnIndex =
+        columns
+        |> Seq.tryFindIndex (_.Key >> (=) selectedColumnName)
+        |> Option.defaultValue 0
+
+    ComboBox.create [
         // Positioning
         match isXAxis with
         | false -> // Y axis
-            StackPanel.dock Dock.Top
+            ComboBox.dock Dock.Top
         | true -> // X axis
             yield! [
-                StackPanel.dock Dock.Right
-                StackPanel.verticalAlignment Layout.VerticalAlignment.Bottom
+                ComboBox.dock Dock.Bottom
+                ComboBox.horizontalAlignment Layout.HorizontalAlignment.Right
             ]
 
-        StackPanel.orientation (
-            match isXAxis with
-            | true -> Layout.Orientation.Vertical
-            | false -> Layout.Orientation.Horizontal
+        // Content
+        columns
+        |> Seq.map (fun kv ->
+            ComboBoxItem.create [
+                ComboBoxItem.content (kv.Key |> ColumnName.raw)
+            ] :> Types.IView
         )
-        StackPanel.children (
-            columns |> List.map (fun column ->
-                textButton
-                    (column.Name |> ColumnName.raw)
-                    (fun _ -> Msg.ChangePlotAxis(isXAxis, column.Name) |> dispatch)
-            )
+        |> Seq.toList
+        |> ComboBox.viewItems
+
+        // Selection
+        ComboBox.selectedIndex selectedColumnIndex // selectedIndex prop must be below viewItems
+        ComboBox.onSelectedItemChanged (fun item ->
+            let columnName =
+                item
+                :?> ComboBoxItem
+                |> _.Content
+                :?> string
+                |> ColumnName
+
+            Msg.ChangePlotAxis (isXAxis, columnName)
+            |> dispatch
         )
+    ]
+
+let plot model dispatch =
+
+    DockPanel.create [
+        DockPanel.dock Dock.Right
+        DockPanel.lastChildFill true
+        DockPanel.children [
+            // Column selectors
+            columnSelector false model.Columns model.ColumnsToPlot dispatch
+            columnSelector true model.Columns model.ColumnsToPlot dispatch
+
+            Plot.create [
+                Plot.dock Dock.Left
+                Plot.init (fun plotControl ->
+                    plotControl
+                    :> ScottPlot.Avalonia.AvaPlot
+                    |> Msg.PlotAttached
+                    |> dispatch
+                )
+            ]
+        ]
+    ]
+
+let plotControls model dispatch =
+    StackPanel.create [
+        StackPanel.dock Dock.Top
+        StackPanel.horizontalAlignment Layout.HorizontalAlignment.Center
+        StackPanel.orientation Layout.Orientation.Horizontal
+        StackPanel.children [
+            textButton "Fit" (fun _ -> Msg.AutoScalePlot |> dispatch)
+        ]
     ]
 
 let view model dispatch =
@@ -65,16 +125,10 @@ let view model dispatch =
                 TabItem.header "Plot"
                 TabItem.content (
                     DockPanel.create [
-                        DockPanel.lastChildFill true
+                        // DockPanel.lastChildFill true
                         DockPanel.children [
-                            // Column selectors
-                            columnSelector false model.Columns dispatch
-                            columnSelector true model.Columns dispatch
-
-                            Plot.create [
-                                Plot.dock Dock.Left
-                                Plot.points (model |> Model.getColumnsToPlot)
-                            ]
+                            plotControls model dispatch
+                            plot model dispatch
                         ]
                     ]
                 )

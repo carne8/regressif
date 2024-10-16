@@ -7,22 +7,30 @@ open MathNet.Numerics.LinearAlgebra
 module Cmds =
     let computeExpression expression (rowIdx, columnIdx) model =
         Cmd.ofEffect (fun dispatch ->
-            let func = expression |> model.CalculationEngine.Build
+            // Get function from expression
+            let func =
+                expression
+                |> model.CalculationEngine.Build
+                |> _.Invoke
 
             // Get all columns values for this row
             let variableDict =
                 model.Columns
-                |> List.map (fun column ->
-                    let variableName = column.Name |> ColumnName.raw
+                |> Seq.map (fun kv ->
+                    let column = kv.Value
+
+                    let variableName = kv.Key |> ColumnName.raw
                     let value =
-                        model.Matrix.Column(column.MatrixIndex)
-                        |> Seq.item rowIdx
+                        column.MatrixIndex
+                        |> model.Matrix.Column
+                        |> Vector.item rowIdx
 
                     variableName, value
                 )
                 |> dict
 
-            let calculatedValue = variableDict |> func.Invoke
+            // Calculate the value
+            let calculatedValue = variableDict |> func
 
             RawMatrixManipMsg.ReplaceValue(
                 columnIdx,
@@ -33,19 +41,49 @@ module Cmds =
             |> dispatch
         )
 
+    module Plot =
+        let applyPoints model =
+            Cmd.ofEffect (fun _ ->
+                let plot =
+                    match model.Plot with
+                    | None -> failwith "Plot not attached"
+                    | Some plot -> plot
+
+                let columns =
+                    model.Columns
+                    |> Dictionary.tryGetTwoItems
+                        (model.ColumnsToPlot |> fst)
+                        (model.ColumnsToPlot |> snd)
+
+                let points =
+                    match columns with
+                    | None -> failwith "Columns not found"
+                    | Some columns ->
+                        (columns |> fst |> _.MatrixIndex |> model.Matrix.Column), // First column
+                        (columns |> snd |> _.MatrixIndex |> model.Matrix.Column)  // Second column
+
+                plot.Plot.Clear()
+
+                points
+                ||> Seq.map2 (fun x y -> ScottPlot.Coordinates(x, y))
+                |> Seq.toArray
+                |> plot.Plot.Add.ScatterPoints
+                |> ignore
+            )
+
 module State =
     let init () =
-        { Columns =
-            [ { Name = ColumnName "a"
-                MatrixIndex = 0
-                Type = ColumnType.Values }
-              { Name = ColumnName "b"
-                MatrixIndex = 1
-                Type = ColumnType.Values } ]
-          Matrix = DenseMatrix.init 4 2 (fun i j -> i)
-          MatrixLastGenerationId = 0u
+        let columns =
+            [ ColumnName "a", { MatrixIndex = 0; Type = ColumnType.Values }
+              ColumnName "b", { MatrixIndex = 1; Type = ColumnType.Values } ]
+
+        { Plot = None
           ColumnsToPlot = ColumnName "a", ColumnName "b"
-          CalculationEngine = Jace.CalculationEngine() },
+
+          Columns = columns |> dict
+          Matrix = DenseMatrix.init 4 2 (fun i j -> i)
+          CalculationEngine = Jace.CalculationEngine()
+          MatrixLastGenerationId = 0u },
         Cmd.none
 
     let updateMatrix model matrixManipMsg =
@@ -75,16 +113,27 @@ module State =
             matrix.[rowIdx, columnIdx] <- value
             matrix
 
-        |> fun matrix ->
-            { model with
-                Matrix = matrix
-                MatrixLastGenerationId = model.MatrixLastGenerationId + 1u }
-
     let update msg model =
         match msg with
-        | Msg.RawMatrixManip matrixManipMsg -> updateMatrix model matrixManipMsg, Cmd.none
+        // Matrix
+        | Msg.RawMatrixManip matrixManipMsg ->
+            let newMatrix = updateMatrix model matrixManipMsg
+
+            let newModel =
+                { model with
+                    Matrix = newMatrix
+                    MatrixLastGenerationId = model.MatrixLastGenerationId + 1u }
+
+            newModel, Cmds.Plot.applyPoints newModel
+
         | Msg.CellEdited (columnIdx, rowIdx, value) ->
             model, Cmds.computeExpression value (rowIdx, columnIdx) model
+
+
+        // Plot
+        | Msg.PlotAttached plot ->
+            let newModel = { model with Plot = Some plot }
+            newModel, Cmds.Plot.applyPoints newModel
 
         | Msg.ChangePlotAxis (isXAxis, newColumnName) ->
             let columnsToPlot =
@@ -92,4 +141,12 @@ module State =
                 | true -> newColumnName, model.ColumnsToPlot |> snd
                 | false -> model.ColumnsToPlot |> fst, newColumnName
 
-            { model with ColumnsToPlot = columnsToPlot }, Cmd.none
+            let newModel = { model with ColumnsToPlot = columnsToPlot }
+            newModel, Cmds.Plot.applyPoints newModel
+
+        | Msg.AutoScalePlot ->
+            model.Plot |> Option.iter (fun plot ->
+                plot.Plot.Axes.AutoScale()
+                plot.Refresh()
+            )
+            model, Cmd.none

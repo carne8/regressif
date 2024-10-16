@@ -2,11 +2,10 @@
 
 open Elmish
 open Avalonia
-open Avalonia.FuncUI
 open Avalonia.FuncUI.Hosts
 open Avalonia.FuncUI.Elmish
 open Avalonia.Controls.ApplicationLifetimes
-open Avalonia.Themes.Fluent
+open Avalonia.Markup.Xaml
 
 type MainWindow() as this =
     inherit HostWindow()
@@ -29,8 +28,10 @@ type App() =
     inherit Application()
 
     override this.Initialize() =
-        this.Styles.Add(FluentTheme())
-        this.Styles.Load "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"
+        AvaloniaXamlLoader.Load(this) // Used to load DataGrid theme because it doesn't work with with code and NativeAOT
+
+        // this.Styles.Add(FluentTheme())
+        // this.Styles.Load "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"
         this.RequestedThemeVariant <- Styling.ThemeVariant.Light
 
     override this.OnFrameworkInitializationCompleted() =
