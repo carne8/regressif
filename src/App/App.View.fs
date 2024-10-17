@@ -18,19 +18,19 @@ let textButton text onClick =
 
 let columnSelector
     isXAxis
-    (columns: Dictionary<ColumnName, Column>)
-    (xSelectedColumn: ColumnName,
-     ySelectedColumn: ColumnName)
+    (columns: Dictionary<ColumnId, Column>)
+    (xSelectedColumn: Column,
+     ySelectedColumn: Column)
     dispatch
     =
-    let selectedColumnName =
+    let selectedColumnId =
         match isXAxis with
-        | true -> xSelectedColumn
-        | false -> ySelectedColumn
+        | true -> xSelectedColumn.Id
+        | false -> ySelectedColumn.Id
 
     let selectedColumnIndex =
         columns
-        |> Seq.tryFindIndex (_.Key >> (=) selectedColumnName)
+        |> Seq.tryFindIndex (_.Key >> (=) selectedColumnId)
         |> Option.defaultValue 0
 
     ComboBox.create [
@@ -48,7 +48,8 @@ let columnSelector
         columns
         |> Seq.map (fun kv ->
             ComboBoxItem.create [
-                ComboBoxItem.content (kv.Key |> ColumnName.raw)
+                ComboBoxItem.content kv.Value.Name
+                ComboBoxItem.dataContext kv.Key
             ] :> Types.IView
         )
         |> Seq.toList
@@ -57,22 +58,19 @@ let columnSelector
         // Selection
         ComboBox.selectedIndex selectedColumnIndex // selectedIndex prop must be below viewItems
         ComboBox.onSelectedItemChanged (fun item ->
-            let columnName =
+            let columnId =
                 item
                 :?> ComboBoxItem
-                |> _.Content
-                :?> string
-                |> ColumnName
+                |> _.DataContext
+                :?> ColumnId
 
-            Msg.ChangePlotAxis (isXAxis, columnName)
+            Msg.ChangePlotAxis (isXAxis, columnId)
             |> dispatch
         )
     ]
 
 let plot model dispatch =
-
     DockPanel.create [
-        DockPanel.dock Dock.Right
         DockPanel.lastChildFill true
         DockPanel.children [
             // Column selectors
@@ -91,13 +89,49 @@ let plot model dispatch =
         ]
     ]
 
-let plotControls model dispatch =
+let plotControls dispatch =
     StackPanel.create [
-        StackPanel.dock Dock.Top
         StackPanel.horizontalAlignment Layout.HorizontalAlignment.Center
         StackPanel.orientation Layout.Orientation.Horizontal
         StackPanel.children [
             textButton "Fit" (fun _ -> Msg.AutoScalePlot |> dispatch)
+        ]
+    ]
+
+let regressionPanel model dispatch =
+    let regressions =
+        [ "None", None
+          "Linear", Some RegressionType.Linear ]
+
+    let selectedIndex =
+        model.Regression
+        |> Option.map Regression.getRegressionType
+        |> fun regType -> regressions |> List.tryFindIndex (snd >> (=) regType)
+        |> Option.defaultValue 0
+
+    DockPanel.create [
+        DockPanel.children [
+            // Regression type combo box
+            ComboBox.create [
+                // Content
+                regressions
+                |> List.map (fun (name, _) ->
+                    ComboBoxItem.create [
+                        ComboBoxItem.content name
+                    ] :> Types.IView
+                )
+                |> ComboBox.viewItems
+
+                // Selection
+                ComboBox.selectedIndex selectedIndex
+                ComboBox.onSelectedIndexChanged (fun newIdx ->
+                    regressions
+                    |> List.item newIdx
+                    |> snd
+                    |> Msg.RegressionTypeChanged
+                    |> dispatch
+                )
+            ]
         ]
     ]
 
@@ -124,11 +158,25 @@ let view model dispatch =
             TabItem.create [
                 TabItem.header "Plot"
                 TabItem.content (
-                    DockPanel.create [
-                        // DockPanel.lastChildFill true
-                        DockPanel.children [
-                            plotControls model dispatch
-                            plot model dispatch
+                    Grid.create [
+                        Grid.columnDefinitions "*, 4, *"
+                        Grid.children [
+                            regressionPanel model dispatch
+                            |> View.withAttrs [ Panel.column 0 ]
+
+                            GridSplitter.create [
+                                GridSplitter.resizeDirection GridResizeDirection.Columns
+                                GridSplitter.column 1
+                            ]
+
+                            DockPanel.create [
+                                DockPanel.column 2
+                                DockPanel.lastChildFill true
+                                DockPanel.children [
+                                    plotControls dispatch |> View.withAttrs [ Panel.dock Dock.Top ]
+                                    plot model dispatch |> View.withAttrs [ Panel.dock Dock.Bottom ]
+                                ]
+                            ]
                         ]
                     ]
                 )

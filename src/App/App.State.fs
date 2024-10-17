@@ -5,6 +5,12 @@ open Elmish
 open MathNet.Numerics.LinearAlgebra
 
 module Cmds =
+    open MathNet.Numerics
+
+    let private getPoints model =
+        (model.ColumnsToPlot |> fst |> _.MatrixIndex |> model.Matrix.Column), // First column
+        (model.ColumnsToPlot |> snd |> _.MatrixIndex |> model.Matrix.Column)  // Second column
+
     let computeExpression expression (rowIdx, columnIdx) model =
         Cmd.ofEffect (fun dispatch ->
             // Get function from expression
@@ -19,7 +25,7 @@ module Cmds =
                 |> Seq.map (fun kv ->
                     let column = kv.Value
 
-                    let variableName = kv.Key |> ColumnName.raw
+                    let variableName = column.Name
                     let value =
                         column.MatrixIndex
                         |> model.Matrix.Column
@@ -49,18 +55,7 @@ module Cmds =
                     | None -> failwith "Plot not attached"
                     | Some plot -> plot
 
-                let columns =
-                    model.Columns
-                    |> Dictionary.tryGetTwoItems
-                        (model.ColumnsToPlot |> fst)
-                        (model.ColumnsToPlot |> snd)
-
-                let points =
-                    match columns with
-                    | None -> failwith "Columns not found"
-                    | Some columns ->
-                        (columns |> fst |> _.MatrixIndex |> model.Matrix.Column), // First column
-                        (columns |> snd |> _.MatrixIndex |> model.Matrix.Column)  // Second column
+                let points = getPoints model
 
                 plot.Plot.Clear()
 
@@ -71,14 +66,63 @@ module Cmds =
                 |> ignore
             )
 
+        let computeRegression model regressionType =
+            Cmd.ofEffect (fun dispatch ->
+                let plot: ScottPlot.Avalonia.AvaPlot =
+                    match model.Plot with
+                    | None -> failwith "Plot not attached"
+                    | Some plot -> plot
+
+                match regressionType with
+                | None ->
+                    plot.Plot.PlottableList
+                    |> Seq.tryFind (fun plottable ->
+                        match plottable with
+                        | :? ScottPlot.Plottables.FunctionPlot ->
+                            plot.Plot.Remove plottable
+                            true
+                        | _ -> false
+                    )
+                    |> ignore
+
+                    None
+
+                | Some RegressionType.Linear ->
+                    let points =
+                        model
+                        |> getPoints
+                        |> fun (x, y) ->
+                            x |> Vector.toArray,
+                            y |> Vector.toArray
+
+                    let struct (b, a) = points |> Fit.Line
+
+                    // Apply regression
+                    fun x -> a*x + b
+                    |> plot.Plot.Add.Function
+                    |> ignore
+
+                    Regression.Linear(a, b) |> Some
+
+                |> Msg.SetRegression
+                |> dispatch
+            )
+
 module State =
     let init () =
         let columns =
-            [ ColumnName "a", { MatrixIndex = 0; Type = ColumnType.Values }
-              ColumnName "b", { MatrixIndex = 1; Type = ColumnType.Values } ]
+            [ let colId1 = ColumnId.create()
+              colId1, { Id = colId1; Name = "x"; MatrixIndex = 0; Type = ColumnType.Values }
+
+              let colId2 = ColumnId.create()
+              colId2, { Id = colId2; Name = "y"; MatrixIndex = 1; Type = ColumnType.Values } ]
 
         { Plot = None
-          ColumnsToPlot = ColumnName "a", ColumnName "b"
+          ColumnsToPlot =
+            columns |> List.item 0 |> snd,
+            columns |> List.item 1 |> snd
+
+          Regression = None
 
           Columns = columns |> dict
           Matrix = DenseMatrix.init 4 2 (fun i j -> i)
@@ -135,14 +179,20 @@ module State =
             let newModel = { model with Plot = Some plot }
             newModel, Cmds.Plot.applyPoints newModel
 
-        | Msg.ChangePlotAxis (isXAxis, newColumnName) ->
-            let columnsToPlot =
-                match isXAxis with
-                | true -> newColumnName, model.ColumnsToPlot |> snd
-                | false -> model.ColumnsToPlot |> fst, newColumnName
+        | Msg.ChangePlotAxis (isXAxis, newColumnId) ->
+            let newColumnOpt = model.Columns |> Dictionary.tryGetItem newColumnId
 
-            let newModel = { model with ColumnsToPlot = columnsToPlot }
-            newModel, Cmds.Plot.applyPoints newModel
+            match newColumnOpt with
+            | None -> model, Cmd.none // TODO: Find a way to show an error message
+            | Some newColumn ->
+
+                let columnsToPlot =
+                    match isXAxis with
+                    | true -> newColumn, model.ColumnsToPlot |> snd
+                    | false -> model.ColumnsToPlot |> fst, newColumn
+
+                let newModel = { model with ColumnsToPlot = columnsToPlot }
+                newModel, Cmds.Plot.applyPoints newModel
 
         | Msg.AutoScalePlot ->
             model.Plot |> Option.iter (fun plot ->
@@ -150,3 +200,9 @@ module State =
                 plot.Refresh()
             )
             model, Cmd.none
+
+
+        // Regression
+        | Msg.RegressionTypeChanged regType -> model, Cmds.Plot.computeRegression model regType
+        | Msg.SetRegression regression -> { model with Regression = regression }, Cmd.none
+

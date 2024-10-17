@@ -1,5 +1,6 @@
 namespace Regressif
 
+open System
 open MathNet.Numerics.LinearAlgebra
 
 [<RequireQualifiedAccess>]
@@ -7,12 +8,14 @@ type ColumnType =
     | Values
     | Formula of string
 
-type ColumnName =
-    | ColumnName of string
-    static member raw (ColumnName value) = value
+type ColumnId =
+    private | ColumnId of Guid
+    static member create() = Guid.NewGuid() |> ColumnId
 
 type Column =
-    { /// The index of the column in the matrix
+    { Id: ColumnId
+      Name: string
+      /// The index of the column in the matrix
       MatrixIndex: int
       Type: ColumnType }
 
@@ -25,6 +28,19 @@ type RawMatrixManipMsg =
     | ReplaceValue of columnIdx: int * rowIdx: int * float
 
 [<RequireQualifiedAccess>]
+type RegressionType =
+    | Linear
+
+[<RequireQualifiedAccess>]
+type Regression =
+    | Linear of a: float * b: float
+
+    static member getRegressionType reg =
+        match reg with
+        | Linear _ -> RegressionType.Linear
+
+
+[<RequireQualifiedAccess>]
 type Msg =
     // Matrix
     | CellEdited of columnIdx: int * rowIdx: int * string
@@ -32,14 +48,20 @@ type Msg =
 
     // Plot
     | PlotAttached of ScottPlot.Avalonia.AvaPlot
-    | ChangePlotAxis of isXAxis: bool * ColumnName
+    | ChangePlotAxis of isXAxis: bool * ColumnId
     | AutoScalePlot
+
+    // Regression
+    | RegressionTypeChanged of RegressionType option
+    | SetRegression of Regression option
 
 type Model =
     { Plot: ScottPlot.Avalonia.AvaPlot option
-      ColumnsToPlot: ColumnName * ColumnName
+      ColumnsToPlot: Column * Column
 
-      Columns: Dictionary<ColumnName, Column>
+      Regression: Regression option
+
+      Columns: Dictionary<ColumnId, Column>
       Matrix: Matrix<float>
       CalculationEngine: Jace.CalculationEngine
       /// Needed for Avalonia.FuncUI to know when to update the view

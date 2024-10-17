@@ -1,8 +1,9 @@
 namespace Regressif.Components
 
-open ScottPlot.Avalonia
 open Avalonia
 open Avalonia.FuncUI.DSL
+open ScottPlot
+open ScottPlot.Avalonia
 
 type Plot() =
     inherit AvaPlot()
@@ -31,7 +32,12 @@ type Plot() =
 
     override this.OnAttachedToLogicalTree(e: LogicalTree.LogicalTreeAttachmentEventArgs) =
         base.OnAttachedToLogicalTree(e: LogicalTree.LogicalTreeAttachmentEventArgs)
-        this.Plot.Axes.SquareUnits()
+
+        AxisRules.SquarePreserveY(
+            this.Plot.Axes.Bottom,
+            this.Plot.Axes.Left
+        )
+        |> this.Plot.Axes.Rules.Add
 
     // Avalonia FuncUI
     static member create attrs = ViewBuilder.Create<Plot>(attrs)
