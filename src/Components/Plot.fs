@@ -33,7 +33,7 @@ type Plot() =
     override this.OnAttachedToLogicalTree(e: LogicalTree.LogicalTreeAttachmentEventArgs) =
         base.OnAttachedToLogicalTree(e: LogicalTree.LogicalTreeAttachmentEventArgs)
 
-        AxisRules.SquarePreserveY(
+        AxisRules.SquareZoomOut(
             this.Plot.Axes.Bottom,
             this.Plot.Axes.Left
         )

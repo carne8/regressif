@@ -66,6 +66,20 @@ module Cmds =
                 |> ignore
             )
 
+        let autoScale model (plot: ScottPlot.Avalonia.AvaPlot) =
+            Cmd.ofEffect (fun _ ->
+                let points = model |> getPoints
+                let margin = 0.5
+
+                let xMin = points |> fst |> Vector.min |> (+) -margin
+                let xMax = points |> fst |> Vector.max |> (+)  margin
+                let yMin = points |> snd |> Vector.min |> (+) -margin
+                let yMax = points |> snd |> Vector.max |> (+)  margin
+
+                plot.Plot.Axes.SetLimits(xMin, xMax, yMin, yMax)
+                plot.Refresh()
+            )
+
         let computeRegression model regressionType =
             Cmd.ofEffect (fun dispatch ->
                 let plot: ScottPlot.Avalonia.AvaPlot =
@@ -107,6 +121,11 @@ module Cmds =
                 |> Msg.SetRegression
                 |> dispatch
             )
+
+        let recomputeRegression model =
+            match model.Regression with
+            | None -> Cmd.none
+            | Some regression -> computeRegression model (regression |> Regression.getRegressionType |> Some)
 
 module State =
     let init () =
@@ -168,7 +187,11 @@ module State =
                     Matrix = newMatrix
                     MatrixLastGenerationId = model.MatrixLastGenerationId + 1u }
 
-            newModel, Cmds.Plot.applyPoints newModel
+            newModel,
+            Cmd.batch [
+                Cmds.Plot.applyPoints newModel
+                Cmds.Plot.recomputeRegression newModel
+            ]
 
         | Msg.CellEdited (columnIdx, rowIdx, value) ->
             model, Cmds.computeExpression value (rowIdx, columnIdx) model
@@ -177,7 +200,11 @@ module State =
         // Plot
         | Msg.PlotAttached plot ->
             let newModel = { model with Plot = Some plot }
-            newModel, Cmds.Plot.applyPoints newModel
+            newModel,
+            Cmd.batch [
+                Cmds.Plot.applyPoints newModel
+                Cmds.Plot.recomputeRegression newModel
+            ]
 
         | Msg.ChangePlotAxis (isXAxis, newColumnId) ->
             let newColumnOpt = model.Columns |> Dictionary.tryGetItem newColumnId
@@ -192,14 +219,17 @@ module State =
                     | false -> model.ColumnsToPlot |> fst, newColumn
 
                 let newModel = { model with ColumnsToPlot = columnsToPlot }
-                newModel, Cmds.Plot.applyPoints newModel
+                newModel,
+                Cmd.batch [
+                    Cmds.Plot.applyPoints newModel
+                    Cmds.Plot.recomputeRegression newModel
+                ]
 
         | Msg.AutoScalePlot ->
-            model.Plot |> Option.iter (fun plot ->
-                plot.Plot.Axes.AutoScale()
-                plot.Refresh()
-            )
-            model, Cmd.none
+            model,
+            match model.Plot with
+            | None -> Cmd.none
+            | Some plot -> Cmds.Plot.autoScale model plot
 
 
         // Regression

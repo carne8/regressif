@@ -108,9 +108,9 @@ type Spreadsheet() as this =
             cell
         )
 
-    static member DataProperty: StyledProperty<Array> = AvaloniaProperty.Register<Spreadsheet, Array>("Data", Array.empty)
+    static member DataProperty = AvaloniaProperty.Register<Spreadsheet, Array>("Data", Array.empty)
     static member ColumnsProperty = AvaloniaProperty.Register<Spreadsheet, Dictionary<ColumnId, Column>>("Columns", System.Collections.Generic.Dictionary())
-    static member OnEditedEvent : RoutedEvent<CellOnEditedArgs> =
+    static member OnEditedEvent =
         RoutedEvent.Register<Spreadsheet, CellOnEditedArgs>("OnEdited", RoutingStrategies.Bubble)
 
     member _.Data
@@ -132,7 +132,6 @@ type Spreadsheet() as this =
             change.NewValue
             |> unbox<Dictionary<ColumnId, Column>>
             |> Seq.iteri (fun columnIdx kv ->
-                let columnId = kv.Key
                 let column = kv.Value
 
                 let el = DataGridTemplateColumn(

@@ -73,6 +73,10 @@ let plot model dispatch =
     DockPanel.create [
         DockPanel.lastChildFill true
         DockPanel.children [
+            // Controls
+            textButton "Fit" (fun _ -> Msg.AutoScalePlot |> dispatch)
+            |> View.withAttrs [ Button.dock Dock.Top ]
+
             // Column selectors
             columnSelector false model.Columns model.ColumnsToPlot dispatch
             columnSelector true model.Columns model.ColumnsToPlot dispatch
@@ -89,49 +93,67 @@ let plot model dispatch =
         ]
     ]
 
-let plotControls dispatch =
-    StackPanel.create [
-        StackPanel.horizontalAlignment Layout.HorizontalAlignment.Center
-        StackPanel.orientation Layout.Orientation.Horizontal
-        StackPanel.children [
-            textButton "Fit" (fun _ -> Msg.AutoScalePlot |> dispatch)
-        ]
-    ]
-
 let regressionPanel model dispatch =
-    let regressions =
-        [ "None", None
-          "Linear", Some RegressionType.Linear ]
+    let regressionTypeComboBox () =
+        let regressions =
+            [ "None", None
+              "Linear", Some RegressionType.Linear ]
 
-    let selectedIndex =
-        model.Regression
-        |> Option.map Regression.getRegressionType
-        |> fun regType -> regressions |> List.tryFindIndex (snd >> (=) regType)
-        |> Option.defaultValue 0
+        let selectedIndex =
+            model.Regression
+            |> Option.map Regression.getRegressionType
+            |> fun regType -> regressions |> List.tryFindIndex (snd >> (=) regType)
+            |> Option.defaultValue 0
 
-    DockPanel.create [
-        DockPanel.children [
-            // Regression type combo box
-            ComboBox.create [
-                // Content
+        ComboBox.create [
+            // Content
+            regressions
+            |> List.map (fun (name, _) ->
+                ComboBoxItem.create [
+                    ComboBoxItem.content name
+                ] :> Types.IView
+            )
+            |> ComboBox.viewItems
+
+            // Selection
+            ComboBox.selectedIndex selectedIndex
+            ComboBox.onSelectedIndexChanged (fun newIdx ->
                 regressions
-                |> List.map (fun (name, _) ->
-                    ComboBoxItem.create [
-                        ComboBoxItem.content name
+                |> List.item newIdx
+                |> snd
+                |> Msg.RegressionTypeChanged
+                |> dispatch
+            )
+        ]
+
+    StackPanel.create [
+        StackPanel.minWidth 150.
+        StackPanel.maxWidth 175.
+        StackPanel.children [
+            regressionTypeComboBox ()
+
+            match model.Regression with
+            | None -> ()
+            | Some regression ->
+                let constants, formula =
+                    match regression with
+                    | Regression.Linear (a, b) ->
+                        [ "a", a; "b", b ],
+                        sprintf "%s = a%s + b"
+                            (model.ColumnsToPlot |> snd |> _.Name)
+                            (model.ColumnsToPlot |> fst |> _.Name)
+
+                TextBox.create [ // TODO: Use mono font
+                    TextBox.text formula
+                    TextBox.isReadOnly true
+                ]
+
+                yield! constants |> List.map (fun (constName, c) ->
+                    TextBox.create [
+                        TextBox.text (sprintf "%s = %.2f" constName c)
+                        TextBox.isReadOnly true
                     ] :> Types.IView
                 )
-                |> ComboBox.viewItems
-
-                // Selection
-                ComboBox.selectedIndex selectedIndex
-                ComboBox.onSelectedIndexChanged (fun newIdx ->
-                    regressions
-                    |> List.item newIdx
-                    |> snd
-                    |> Msg.RegressionTypeChanged
-                    |> dispatch
-                )
-            ]
         ]
     ]
 
@@ -159,24 +181,14 @@ let view model dispatch =
                 TabItem.header "Plot"
                 TabItem.content (
                     Grid.create [
-                        Grid.columnDefinitions "*, 4, *"
+                        Grid.columnDefinitions "Auto, *"
+                        Grid.showGridLines true
                         Grid.children [
                             regressionPanel model dispatch
                             |> View.withAttrs [ Panel.column 0 ]
 
-                            GridSplitter.create [
-                                GridSplitter.resizeDirection GridResizeDirection.Columns
-                                GridSplitter.column 1
-                            ]
-
-                            DockPanel.create [
-                                DockPanel.column 2
-                                DockPanel.lastChildFill true
-                                DockPanel.children [
-                                    plotControls dispatch |> View.withAttrs [ Panel.dock Dock.Top ]
-                                    plot model dispatch |> View.withAttrs [ Panel.dock Dock.Bottom ]
-                                ]
-                            ]
+                            plot model dispatch
+                            |> View.withAttrs [ Panel.column 1 ]
                         ]
                     ]
                 )
