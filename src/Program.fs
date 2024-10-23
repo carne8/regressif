@@ -15,8 +15,8 @@ type MainWindow() as this =
         this.AttachDevTools()
         #endif
 
-        this.Width <- 400.
-        this.Height <- 400.
+        this.Width <- 900.
+        this.Height <- 700.
 
         Program.mkProgram State.init State.update View.view
         // |> Program.withConsoleTrace

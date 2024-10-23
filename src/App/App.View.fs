@@ -129,6 +129,7 @@ let regressionPanel model dispatch =
     StackPanel.create [
         StackPanel.minWidth 150.
         StackPanel.maxWidth 175.
+        StackPanel.margin (0, 0, 10, 0)
         StackPanel.children [
             regressionTypeComboBox ()
 
@@ -150,7 +151,7 @@ let regressionPanel model dispatch =
 
                 yield! constants |> List.map (fun (constName, c) ->
                     TextBox.create [
-                        TextBox.text (sprintf "%s = %.2f" constName c)
+                        TextBox.text (sprintf "%s = %s" constName (c.ToString("F3")))
                         TextBox.isReadOnly true
                     ] :> Types.IView
                 )
