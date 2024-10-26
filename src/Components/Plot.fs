@@ -1,15 +1,44 @@
 namespace Regressif.Components
 
 open Avalonia.FuncUI.DSL
+open ScottPlot
 open ScottPlot.Avalonia
 
-type Plot() =
+type Plot() as this =
     inherit AvaPlot()
 
-    static member create attrs = ViewBuilder.Create<Plot>(attrs)
-    // static member points<'t when 't :> Plot> (xArr: float array, yArr: float array) : IAttr<'t> =
-    //     let newValue =
-    //         (xArr, yArr)
-    //         ||> Array.map2  (fun x y -> (x, y))
+    do
+        // Disable all interactions
+        let userInputProcessor = this.Plot.PlotControl.UserInputProcessor
+        userInputProcessor.IsEnabled <- true
+        userInputProcessor.Reset()
+        userInputProcessor.UserActionResponses.Clear()
 
-    //     AttrBuilder<'t>.CreateProperty<(float * float) array>(Plot.PointsProperty, newValue, ValueNone)
+
+        // --- Menu ---
+        Interactivity.StandardMouseButtons.Right
+        |> Interactivity.UserActionResponses.SingleClickContextMenu
+        |> userInputProcessor.UserActionResponses.Add
+
+        this.Menu.Clear()
+        this.Menu.Add("Save Image", fun plot ->
+            let menu = (plot.Menu :?> Avalonia.AvaPlotMenu)
+            menu.OpenSaveImageDialog(plot)
+        )
+
+        // --- Ticks ---
+        this.Plot.Axes.Left.TickGenerator <- TickGenerators.NumericAutomatic(IntegerTicksOnly = true, MinimumTickSpacing = 25f)// 50f)
+        this.Plot.Axes.Bottom.TickGenerator <- TickGenerators.NumericAutomatic(IntegerTicksOnly = true, MinimumTickSpacing = 40f)// 80f)
+
+        // --- Grid ---
+        // Style
+        this.Plot.Grid.MajorLineWidth <- 0.5f // 0.5f for high resolution screens
+        this.Plot.Grid.MinorLineWidth <- 1f
+        this.Plot.Grid.XAxisStyle.MinorLineStyle.Pattern <- LinePattern.Dotted
+        this.Plot.Grid.YAxisStyle.MinorLineStyle.Pattern <- LinePattern.Dotted
+
+        // Color
+        this.Plot.Grid.MajorLineColor <- Color.Gray(80uy)
+        this.Plot.Grid.MinorLineColor <- Color.Gray(190uy)
+
+    static member create attrs = ViewBuilder.Create<Plot>(attrs)

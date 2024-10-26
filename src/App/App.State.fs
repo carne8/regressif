@@ -50,45 +50,17 @@ module Cmds =
     module Plot =
         open ScottPlot
 
-        let init (plot: Avalonia.AvaPlot) =
-            Cmd.ofEffect (fun _ ->
-                // Disable all interactions
-                let userInputProcessor = plot.Plot.PlotControl.UserInputProcessor
-                userInputProcessor.IsEnabled <- true
-                userInputProcessor.Reset()
-                userInputProcessor.UserActionResponses.Clear()
+        let private autoScalePlot model (plot: Avalonia.AvaPlot) =
+            let points = model |> getPoints
+            let margin = 1.
 
-                // Add right click context menu
-                Interactivity.StandardMouseButtons.Right
-                |> Interactivity.UserActionResponses.SingleClickContextMenu
-                |> userInputProcessor.UserActionResponses.Add
+            let xMax = points |> fst |> Vector.max |> (+) margin
+            let yMax = points |> snd |> Vector.max |> (+) margin
 
-                // Set menu
-                plot.Menu.Clear()
-                plot.Menu.Add("Save Image", fun plot ->
-                    let menu = (plot.Menu :?> Avalonia.AvaPlotMenu)
-                    menu.OpenSaveImageDialog(plot)
-                )
+            plot.Plot.Axes.SetLimits(0, xMax, 0, yMax)
+            plot.Refresh()
 
-                // Set integer ticks only
-                let tickGenerator () =
-                    TickGenerators.NumericAutomatic(
-                        IntegerTicksOnly = true
-                    )
-                plot.Plot.Axes.Left.TickGenerator <- tickGenerator()
-                plot.Plot.Axes.Bottom.TickGenerator <- tickGenerator()
-
-                // Set grid style
-                // plot.Plot.Grid.MajorLineWidth <- 0.5f // 0.5f for high resolution screens
-                plot.Plot.Grid.MinorLineWidth <- 1f
-                // Set grid color
-                plot.Plot.Grid.MajorLineColor <- Color.Gray(80uy)
-                plot.Plot.Grid.MinorLineColor <- Color.Gray(190uy)
-
-                // Set minor grid style
-                plot.Plot.Grid.XAxisStyle.MinorLineStyle.Pattern <- LinePattern.Dotted
-                plot.Plot.Grid.YAxisStyle.MinorLineStyle.Pattern <- LinePattern.Dotted
-            )
+        let autoScale model (plot: Avalonia.AvaPlot) = Cmd.ofEffect (fun _ -> autoScalePlot model plot)
 
         let applyPoints model =
             Cmd.ofEffect (fun _ ->
@@ -106,18 +78,8 @@ module Cmds =
                 |> Seq.toArray
                 |> plot.Plot.Add.ScatterPoints
                 |> ignore
-            )
 
-        let autoScale model (plot: Avalonia.AvaPlot) =
-            Cmd.ofEffect (fun _ ->
-                let points = model |> getPoints
-                let margin = 0.5
-
-                let xMax = points |> fst |> Vector.max |> (+) margin
-                let yMax = points |> snd |> Vector.max |> (+) margin
-
-                plot.Plot.Axes.SetLimits(0, xMax, 0, yMax)
-                plot.Refresh()
+                autoScalePlot model plot
             )
 
         let computeRegression model regressionType =
@@ -242,7 +204,6 @@ module State =
             let newModel = { model with Plot = Some plot }
             newModel,
             Cmd.batch [
-                Cmds.Plot.init plot
                 Cmds.Plot.autoScale newModel plot
                 Cmds.Plot.applyPoints newModel
                 Cmds.Plot.recomputeRegression newModel

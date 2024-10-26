@@ -172,8 +172,8 @@ let view model dispatch =
                             |> dispatch
                         )
                     )
-                    Spreadsheet.data (model.Matrix.ToRowArrays())
-                    Spreadsheet.columns model.Columns
+                    Spreadsheet.data (model.Matrix.ToArray())
+                    // Spreadsheet.columns model.Columns
                 ]
                 |> TabItem.content
             ]

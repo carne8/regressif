@@ -17,7 +17,6 @@
 
     <Compile Include="Components/Plot.fs" />
     <Compile Include="Components/Spreadsheet.fs" />
-    <Compile Include="Components/RelativePanel.fs" />
     <Compile Include="App/App.View.fs" />
 
     <Compile Include="Program.fs" />
