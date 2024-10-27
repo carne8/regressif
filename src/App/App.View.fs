@@ -166,14 +166,24 @@ let view model dispatch =
 
                 Spreadsheet.create [
                     Spreadsheet.init (fun el ->
-                        el.OnEdited.Add(fun args ->
+                        el.OnValueEdited.Add(fun args ->
                             (args.ColumnIdx, args.RowIdx, args.NewText)
                             |> Msg.CellEdited
                             |> dispatch
                         )
+
+                        el.OnColumnNameEdited.Add(fun args ->
+                            // TODO
+                            // (args.ColumnId, args.NewName)
+                            // |> Msg.ColumnNameEdited
+                            // |> dispatch
+                            ()
+                        )
                     )
-                    Spreadsheet.data (model.Matrix.ToArray())
-                    // Spreadsheet.columns model.Columns
+                    Spreadsheet.items (
+                        model.Columns |> Seq.map _.Value |> Seq.toArray,
+                        model.Matrix.ToArray()
+                    )
                 ]
                 |> TabItem.content
             ]

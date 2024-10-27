@@ -27,8 +27,16 @@ type Plot() as this =
         )
 
         // --- Ticks ---
-        this.Plot.Axes.Left.TickGenerator <- TickGenerators.NumericAutomatic(IntegerTicksOnly = true, MinimumTickSpacing = 25f)// 50f)
-        this.Plot.Axes.Bottom.TickGenerator <- TickGenerators.NumericAutomatic(IntegerTicksOnly = true, MinimumTickSpacing = 40f)// 80f)
+        this.Plot.Axes.Left.TickGenerator <-
+            TickGenerators.NumericAutomatic(
+                IntegerTicksOnly = true,
+                MinimumTickSpacing = 35f
+            )
+        this.Plot.Axes.Bottom.TickGenerator <-
+            TickGenerators.NumericAutomatic(
+                IntegerTicksOnly = true,
+                MinimumTickSpacing = 40f
+            )
 
         // --- Grid ---
         // Style
