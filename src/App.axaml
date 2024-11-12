@@ -9,4 +9,8 @@
         <FluentTheme />
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     </Application.Styles>
+
+    <Application.Resources>
+        <FontFamily x:Key="JetBrains Mono">avares://Regressif/Assets/Fonts/JetBrains-Mono/#JetBrainsMono</FontFamily>
+    </Application.Resources>
 </Application>

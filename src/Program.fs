@@ -32,7 +32,7 @@ type App() =
 
         // this.Styles.Add(FluentTheme())
         // this.Styles.Load "avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"
-        this.RequestedThemeVariant <- Styling.ThemeVariant.Light
+        // this.RequestedThemeVariant <- Styling.ThemeVariant.Light
 
     override this.OnFrameworkInitializationCompleted() =
         match this.ApplicationLifetime with

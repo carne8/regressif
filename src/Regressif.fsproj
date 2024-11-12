@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -17,7 +17,6 @@
 
     <Compile Include="Components/Plot.fs" />
     <Compile Include="Components/Spreadsheet.fs" />
-    <Compile Include="Components/RelativePanel.fs" />
     <Compile Include="App/App.View.fs" />
 
     <Compile Include="Program.fs" />
@@ -25,13 +24,13 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.4" />
-    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.4" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.4" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.4" />
 
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.4" />
     <PackageReference Include="Avalonia.FuncUI" Version="1.5.1" />
     <PackageReference Include="Avalonia.FuncUI.Elmish" Version="1.5.1" />
 

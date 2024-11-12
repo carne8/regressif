@@ -29,3 +29,26 @@ module Dictionary =
 module Vector =
     open MathNet.Numerics.LinearAlgebra
     let item index (vec: Vector<'T>) = vec.Item index
+
+module Array2D =
+    let column index (array: 'T[,]) =
+        Array.init (array |> Array2D.length1) (fun i -> array.[i, index])
+
+    let tryColumn index (array: 'T[,]) =
+        match index < (array |> Array2D.length1) with
+        | true -> Some (column index array)
+        | false -> None
+
+    let row index (array: 'T[,]) =
+        Array.init (array |> Array2D.length2) (fun i -> array.[index, i])
+
+    let tryRow index (array: 'T[,]) =
+        match index < (array |> Array2D.length2) with
+        | true -> Some (row index array)
+        | false -> None
+
+    let columns (array: 'T[,]) =
+        Array.init (array |> Array2D.length2) (fun i -> column i array)
+
+    let rows (array: 'T[,]) =
+        Array.init (array |> Array2D.length1) (fun i -> row i array)

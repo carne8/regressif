@@ -51,6 +51,8 @@ type Msg =
     | ChangePlotAxis of isXAxis: bool * ColumnId
     | AutoScalePlot
 
+    | RenameColumn of ColumnId * string
+
     // Regression
     | RegressionTypeChanged of RegressionType option
     | SetRegression of Regression option
