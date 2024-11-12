@@ -235,6 +235,33 @@ module State =
             | Some plot -> Cmds.Plot.autoScale model plot
 
 
+        | Msg.RenameColumn (columnId, newName) ->
+            let newColumns, newColumnsToPlot =
+                model.Columns |> Seq.mapFold
+                    (fun columnsToPlot column ->
+                        let newColumn =
+                            match column.Key = columnId with
+                            | true -> column.Key, { column.Value with Name = newName }
+                            | false -> column.Key, column.Value
+
+                        let newColumnsToPlot =
+                            match columnsToPlot with
+                            | (col, _) when col.Id = (newColumn |> fst) ->
+                                newColumn |> snd, columnsToPlot |> snd
+                            | (_, col) when col.Id = (newColumn |> fst) ->
+                                columnsToPlot |> fst, newColumn |> snd
+                            | _ -> columnsToPlot
+
+                        newColumn, newColumnsToPlot
+                    )
+                    model.ColumnsToPlot
+
+            { model with
+                Columns = newColumns |> dict
+                ColumnsToPlot = newColumnsToPlot },
+            Cmd.none
+
+
         // Regression
         | Msg.RegressionTypeChanged regType -> model, Cmds.Plot.computeRegression model regType
         | Msg.SetRegression regression -> { model with Regression = regression }, Cmd.none

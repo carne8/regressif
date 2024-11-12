@@ -6,6 +6,8 @@ open Avalonia.Controls
 open Avalonia.FuncUI
 open Avalonia.FuncUI.DSL
 
+let monospaceFont = Media.FontFamily.Parse "JetBrains Mono"
+
 let textButton text onClick =
     Button.create [
         Button.onClick onClick
@@ -34,11 +36,15 @@ let columnSelector
         |> Option.defaultValue 0
 
     ComboBox.create [
+        ComboBox.fontFamily monospaceFont
+
         // Positioning
         match isXAxis with
-        | false -> // Y axis
+        | false ->
+            // Y axis
             ComboBox.dock Dock.Top
-        | true -> // X axis
+        | true ->
+            // X axis
             yield! [
                 ComboBox.dock Dock.Bottom
                 ComboBox.horizontalAlignment Layout.HorizontalAlignment.Right
@@ -144,13 +150,15 @@ let regressionPanel model dispatch =
                             (model.ColumnsToPlot |> snd |> _.Name)
                             (model.ColumnsToPlot |> fst |> _.Name)
 
-                TextBox.create [ // TODO: Use mono font
+                TextBox.create [
+                    TextBox.fontFamily monospaceFont
                     TextBox.text formula
                     TextBox.isReadOnly true
                 ]
 
                 yield! constants |> List.map (fun (constName, c) ->
                     TextBox.create [
+                        TextBox.fontFamily monospaceFont
                         TextBox.text (sprintf "%s = %s" constName (c.ToString("F3")))
                         TextBox.isReadOnly true
                     ] :> Types.IView
@@ -165,6 +173,7 @@ let view model dispatch =
                 TabItem.header "Data"
 
                 Spreadsheet.create [
+                    Spreadsheet.fontFamily monospaceFont
                     Spreadsheet.init (fun el ->
                         el.OnValueEdited.Add(fun args ->
                             (args.ColumnIdx, args.RowIdx, args.NewText)
@@ -174,10 +183,9 @@ let view model dispatch =
 
                         el.OnColumnNameEdited.Add(fun args ->
                             // TODO
-                            // (args.ColumnId, args.NewName)
-                            // |> Msg.ColumnNameEdited
-                            // |> dispatch
-                            ()
+                            (args.ColumnId, args.NewName)
+                            |> Msg.RenameColumn
+                            |> dispatch
                         )
                     )
                     Spreadsheet.items (
