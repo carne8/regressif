@@ -166,33 +166,93 @@ let regressionPanel model dispatch =
         ]
     ]
 
+let spreadsheet model dispatch =
+    RelativePanel.create [
+        RelativePanel.children [
+
+            Spreadsheet.create [
+                Spreadsheet.name "spreadsheet"
+                Spreadsheet.fontFamily monospaceFont
+                Spreadsheet.init (fun el ->
+                    el.OnValueEdited.Add(fun args ->
+                        (args.ColumnIdx, args.RowIdx, args.NewText)
+                        |> Msg.CellEdited
+                        |> dispatch
+                    )
+
+                    el.OnColumnNameEdited.Add(fun args ->
+                        (args.ColumnId, args.NewName)
+                        |> Msg.RenameColumn
+                        |> dispatch
+                    )
+                )
+                Spreadsheet.items (
+                    model.Columns |> Seq.map _.Value |> Seq.toArray,
+                    model.Matrix
+                )
+            ]
+
+            Button.create [
+                Button.init (fun el ->
+                    el.AttachedToVisualTree.Add(fun _ ->
+                        let spreadsheet =
+                            (el.Parent :?> RelativePanel)
+                            |> _.Children
+                            |> Seq.tryFind (_.Name >> (=) "spreadsheet")
+
+                        match spreadsheet with
+                        | None -> ()
+                        | Some spreadsheet ->
+                            RelativePanel.SetRightOf(el, spreadsheet)
+                            RelativePanel.SetAlignTopWith(el, spreadsheet)
+                            RelativePanel.SetAlignBottomWith(el, spreadsheet)
+                    )
+                )
+                Button.content (
+                    TextBlock.create [
+                        TextBlock.text "+"
+                    ]
+                )
+                Button.onClick (fun _ -> ColumnCreationInfo.Values |> Msg.AddColumn |> dispatch)
+                Button.verticalAlignment Layout.VerticalAlignment.Stretch
+                Button.verticalContentAlignment Layout.VerticalAlignment.Center
+            ]
+
+            Button.create [
+                Button.init (fun el ->
+                    el.AttachedToVisualTree.Add(fun _ ->
+                        let spreadsheet =
+                            (el.Parent :?> RelativePanel)
+                            |> _.Children
+                            |> Seq.tryFind (_.Name >> (=) "spreadsheet")
+
+                        match spreadsheet with
+                        | None -> ()
+                        | Some spreadsheet ->
+                            RelativePanel.SetBelow(el, spreadsheet)
+                            RelativePanel.SetAlignLeftWith(el, spreadsheet)
+                            RelativePanel.SetAlignRightWith(el, spreadsheet)
+                    )
+                )
+                Button.content (
+                    TextBlock.create [
+                        TextBlock.text "+"
+                    ]
+                )
+                Button.onClick (fun _ -> Msg.AddRow |> dispatch)
+                Button.horizontalAlignment Layout.HorizontalAlignment.Stretch
+                Button.horizontalContentAlignment Layout.HorizontalAlignment.Center
+            ]
+        ]
+    ]
+
+
 let view model dispatch =
     TabControl.create [
         TabControl.viewItems [
             TabItem.create [
                 TabItem.header "Data"
-
-                Spreadsheet.create [
-                    Spreadsheet.fontFamily monospaceFont
-                    Spreadsheet.init (fun el ->
-                        el.OnValueEdited.Add(fun args ->
-                            (args.ColumnIdx, args.RowIdx, args.NewText)
-                            |> Msg.CellEdited
-                            |> dispatch
-                        )
-
-                        el.OnColumnNameEdited.Add(fun args ->
-                            (args.ColumnId, args.NewName)
-                            |> Msg.RenameColumn
-                            |> dispatch
-                        )
-                    )
-                    Spreadsheet.items (
-                        model.Columns |> Seq.map _.Value |> Seq.toArray,
-                        model.Matrix.ToArray()
-                    )
-                ]
-                |> TabItem.content
+                TabItem.content (spreadsheet model dispatch)
             ]
 
             TabItem.create [

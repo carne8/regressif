@@ -1,7 +1,8 @@
 [<AutoOpen>]
 module Helpers
 
-type Dictionary<'key, 'value> = System.Collections.Generic.IDictionary<'key, 'value>
+open System.Collections.Generic
+type Dictionary<'key, 'value> = IDictionary<'key, 'value>
 
 module Dictionary =
     let tryGetItem key (dict: Dictionary<_, _>) =
@@ -25,6 +26,17 @@ module Dictionary =
         | Some one, Some two -> Some (one, two)
         | _ -> None
 
+    let add key value (d: Dictionary<_, _>) =
+        Seq.append
+            d
+            [ KeyValuePair(key, value) ]
+        |> Dictionary<_, _>
+
+    let remove (key: 'k) (d: Dictionary<'k, _>) =
+        d
+        |> Seq.filter (_.Key >> (<>) key)
+        |> Dictionary<_, _>
+
 [<RequireQualifiedAccess>]
 module Vector =
     open MathNet.Numerics.LinearAlgebra
@@ -32,7 +44,7 @@ module Vector =
 
 module Array2D =
     let column index (array: 'T[,]) =
-        Array.init (array |> Array2D.length1) (fun i -> array.[i, index])
+        Array.init (array |> Array2D.length1) (fun i -> array[i, index])
 
     let tryColumn index (array: 'T[,]) =
         match index < (array |> Array2D.length1) with
@@ -40,7 +52,7 @@ module Array2D =
         | false -> None
 
     let row index (array: 'T[,]) =
-        Array.init (array |> Array2D.length2) (fun i -> array.[index, i])
+        Array.init (array |> Array2D.length2) (fun i -> array[index, i])
 
     let tryRow index (array: 'T[,]) =
         match index < (array |> Array2D.length2) with
@@ -52,3 +64,64 @@ module Array2D =
 
     let rows (array: 'T[,]) =
         Array.init (array |> Array2D.length1) (fun i -> row i array)
+
+    let getColumn array index = column index array
+
+    let at column row (array: 'T[,]) = array[row, column]
+
+    let rowCount (array: 'T[,]) = array |> Array2D.length1
+    let columnCount (array: 'T[,]) = array |> Array2D.length2
+
+    let addColumn (column: 'T[]) (array: 'T[,]) =
+        let rowCount = array |> rowCount
+        let columnCount = array |> columnCount
+
+        Array2D.init
+            rowCount
+            (columnCount + 1)
+            (fun i j ->
+                match j = columnCount with
+                | true -> column[i]
+                | false -> array[i, j]
+            )
+
+    let addRow (row: 'T[]) (array: 'T[,]) =
+        let rowCount = array |> rowCount
+        let columnCount = array |> columnCount
+
+        Array2D.init
+            (rowCount + 1)
+            columnCount
+            (fun i j ->
+                match i = rowCount with
+                | true -> row[j]
+                | false -> array[i, j]
+            )
+
+    /// Create a new array with the specified column removed
+    let removeColumn index (array: 'T[,]) =
+        let rowCount = array |> rowCount
+        let columnCount = array |> columnCount
+
+        Array2D.init
+            rowCount
+            (columnCount - 1)
+            (fun i j ->
+                match j = index with
+                | true -> array[i, j + 1]
+                | false -> array[i, j]
+            )
+
+    /// Create a new array with the specified row removed
+    let removeRow index (array: 'T[,]) =
+        let rowCount = array |> rowCount
+        let columnCount = array |> columnCount
+
+        Array2D.init
+            (rowCount - 1)
+            columnCount
+            (fun i j ->
+                match i = index with
+                | true -> array[i + 1, j]
+                | false -> array[i, j]
+            )

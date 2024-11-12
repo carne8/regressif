@@ -15,6 +15,7 @@
     <Compile Include="App/App.Types.fs" />
     <Compile Include="App/App.State.fs" />
 
+    <Compile Include="Components/RelativePanel.fs" />
     <Compile Include="Components/Plot.fs" />
     <Compile Include="Components/Spreadsheet.fs" />
     <Compile Include="App/App.View.fs" />

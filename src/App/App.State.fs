@@ -2,14 +2,13 @@ namespace Regressif
 
 open Regressif
 open Elmish
-open MathNet.Numerics.LinearAlgebra
 
 module Cmds =
     open MathNet.Numerics
 
     let private getPoints model =
-        (model.ColumnsToPlot |> fst |> _.MatrixIndex |> model.Matrix.Column), // First column
-        (model.ColumnsToPlot |> snd |> _.MatrixIndex |> model.Matrix.Column)  // Second column
+        (model.ColumnsToPlot |> fst |> _.MatrixIndex |> Array2D.getColumn model.Matrix), // First column
+        (model.ColumnsToPlot |> snd |> _.MatrixIndex |> Array2D.getColumn model.Matrix)  // Second column
 
     let computeExpression expression (rowIdx, columnIdx) model =
         Cmd.ofEffect (fun dispatch ->
@@ -27,9 +26,8 @@ module Cmds =
 
                     let variableName = column.Name
                     let value =
-                        column.MatrixIndex
-                        |> model.Matrix.Column
-                        |> Vector.item rowIdx
+                        model.Matrix
+                        |> Array2D.at column.MatrixIndex rowIdx
 
                     variableName, value
                 )
@@ -54,8 +52,8 @@ module Cmds =
             let points = model |> getPoints
             let margin = 1.
 
-            let xMax = points |> fst |> Vector.max |> (+) margin
-            let yMax = points |> snd |> Vector.max |> (+) margin
+            let xMax = points |> fst |> Array.max |> (+) margin
+            let yMax = points |> snd |> Array.max |> (+) margin
 
             plot.Plot.Axes.SetLimits(0, xMax, 0, yMax)
             plot.Refresh()
@@ -104,14 +102,10 @@ module Cmds =
                     None
 
                 | Some RegressionType.Linear ->
-                    let points =
+                    let struct (b, a) =
                         model
                         |> getPoints
-                        |> fun (x, y) ->
-                            x |> Vector.toArray,
-                            y |> Vector.toArray
-
-                    let struct (b, a) = points |> Fit.Line
+                        |> Fit.Line
 
                     // Apply regression
                     fun x -> a*x + b
@@ -146,7 +140,7 @@ module State =
           Regression = None
 
           Columns = columns |> dict
-          Matrix = DenseMatrix.init 4 2 (fun i j -> i + j |> float)
+          Matrix = Array2D.init 4 2 (fun i j -> i + j |> float)
           CalculationEngine = Jace.CalculationEngine()
           MatrixLastGenerationId = 0u },
         Cmd.none
@@ -157,25 +151,32 @@ module State =
         match matrixManipMsg with
         | RawMatrixManipMsg.AddRow ->
             let row =
-                matrix.ColumnCount
+                matrix
+                |> Array2D.columnCount
                 |> Array.zeroCreate
-                |> Vector.Build.Dense
 
-            matrix.InsertRow(matrix.RowCount, row)
+            matrix |> Array2D.addRow row
 
-        | RawMatrixManipMsg.AddColumn columnInfo ->
-            let column =
-                matrix.RowCount
-                |> Array.zeroCreate
-                |> Vector.Build.Dense
+        | RawMatrixManipMsg.AddColumn columnCreationInfo ->
+            let columnValues =
+                match columnCreationInfo with
+                | ColumnCreationInfo.Values ->
+                    matrix
+                    |> Array2D.rowCount
+                    |> Array.zeroCreate
+                | ColumnCreationInfo.Formula formula ->
+                    printfn "Not implemented" // TODO
+                    matrix
+                    |> Array2D.rowCount
+                    |> Array.zeroCreate
 
-            matrix.InsertColumn(columnInfo.MatrixIndex, column)
+            matrix |> Array2D.addColumn columnValues
 
-        | RawMatrixManipMsg.RemoveRow rowIdx -> matrix.RemoveRow(rowIdx)
-        | RawMatrixManipMsg.RemoveColumn columnIdx -> matrix.RemoveColumn(columnIdx)
+        | RawMatrixManipMsg.RemoveRow rowIdx -> matrix |> Array2D.removeRow rowIdx
+        | RawMatrixManipMsg.RemoveColumn columnIdx -> matrix |> Array2D.removeColumn columnIdx
 
         | RawMatrixManipMsg.ReplaceValue (columnIdx, rowIdx, value) ->
-            matrix.[rowIdx, columnIdx] <- value
+            matrix[rowIdx, columnIdx] <- value
             matrix
 
     let update msg model =
@@ -234,6 +235,58 @@ module State =
             | None -> Cmd.none
             | Some plot -> Cmds.Plot.autoScale model plot
 
+
+        // Columns and rows
+        | Msg.AddRow ->
+            model,
+            RawMatrixManipMsg.AddRow
+            |> Msg.RawMatrixManip
+            |> Cmd.ofMsg
+
+        | Msg.RemoveRow rowIdx ->
+            model,
+            rowIdx
+            |> RawMatrixManipMsg.RemoveRow
+            |> Msg.RawMatrixManip
+            |> Cmd.ofMsg
+
+        | Msg.AddColumn columnCreationInfo ->
+            let newColumn =
+                match columnCreationInfo with
+                | ColumnCreationInfo.Values ->
+                    { Id = ColumnId.create()
+                      Name = "New column" // TODO: Replace with alphabet letters
+                      MatrixIndex = model.Matrix |> Array2D.columnCount
+                      Type = ColumnType.Values }
+                | ColumnCreationInfo.Formula formula ->
+                    { Id = ColumnId.create()
+                      Name = "New column"
+                      MatrixIndex = model.Matrix |> Array2D.columnCount
+                      Type = ColumnType.Formula formula }
+
+            let newColumns =
+                model.Columns |> Dictionary.add newColumn.Id newColumn
+
+            { model with Columns = newColumns },
+            columnCreationInfo
+            |> RawMatrixManipMsg.AddColumn
+            |> Msg.RawMatrixManip
+            |> Cmd.ofMsg
+
+        | Msg.RemoveColumn columnId ->
+            let column =
+                model.Columns
+                |> Dictionary.tryGetItem columnId
+                |> Option.defaultWith (fun _ -> failwith "Column not found")
+
+            let newColumns =
+                model.Columns |> Dictionary.remove columnId
+
+            { model with Columns = newColumns },
+            column.MatrixIndex
+            |> RawMatrixManipMsg.RemoveColumn
+            |> Msg.RawMatrixManip
+            |> Cmd.ofMsg
 
         | Msg.RenameColumn (columnId, newName) ->
             let newColumns, newColumnsToPlot =

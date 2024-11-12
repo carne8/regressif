@@ -1,7 +1,6 @@
 namespace Regressif
 
 open System
-open MathNet.Numerics.LinearAlgebra
 
 [<RequireQualifiedAccess>]
 type ColumnType =
@@ -20,10 +19,15 @@ type Column =
       Type: ColumnType }
 
 [<RequireQualifiedAccess>]
+type ColumnCreationInfo =
+    | Values
+    | Formula of formula: string
+
+[<RequireQualifiedAccess>]
 type RawMatrixManipMsg =
     | AddRow
     | RemoveRow of rowIdx: int
-    | AddColumn of Column
+    | AddColumn of ColumnCreationInfo
     | RemoveColumn of columnIdx: int
     | ReplaceValue of columnIdx: int * rowIdx: int * float
 
@@ -51,7 +55,12 @@ type Msg =
     | ChangePlotAxis of isXAxis: bool * ColumnId
     | AutoScalePlot
 
+    // Columns nad rows // TODO: Test all this messages
+    | AddColumn of ColumnCreationInfo
+    | RemoveColumn of ColumnId
     | RenameColumn of ColumnId * string
+    | AddRow
+    | RemoveRow of int
 
     // Regression
     | RegressionTypeChanged of RegressionType option
@@ -64,7 +73,7 @@ type Model =
       Regression: Regression option
 
       Columns: Dictionary<ColumnId, Column>
-      Matrix: Matrix<float>
+      Matrix: float array2d
       CalculationEngine: Jace.CalculationEngine
       /// Needed for Avalonia.FuncUI to know when to update the view
       MatrixLastGenerationId: uint }
