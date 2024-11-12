@@ -182,7 +182,6 @@ let view model dispatch =
                         )
 
                         el.OnColumnNameEdited.Add(fun args ->
-                            // TODO
                             (args.ColumnId, args.NewName)
                             |> Msg.RenameColumn
                             |> dispatch

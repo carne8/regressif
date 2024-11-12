@@ -22,13 +22,13 @@ type Cell(onEdited: string -> unit) as this =
 
     let textBox = TextBox()
 
-    let mutable beforeEditText = ""
+    let mutable beforeEditText = None
 
     let onEditFinished _ =
-        match beforeEditText = textBox.Text with
+        match beforeEditText = Some textBox.Text with
         | true -> ()
         | false -> // Value changed
-            beforeEditText <- textBox.Text
+            beforeEditText <- Some textBox.Text
             onEdited textBox.Text
 
     // Used to hie textBox outline
@@ -44,12 +44,23 @@ type Cell(onEdited: string -> unit) as this =
     do
         this.Styles.Add cellStyle
 
+        // Bind TextProperty
+        let textObservable =
+            TextProperty
+            |> this.GetObservable
+            |> Observable.map (fun newText ->
+                if newText <> "" && beforeEditText.IsNone then
+                    beforeEditText <- Some newText
+                newText
+            )
+
         textBox.Bind(
             TextBox.TextProperty,
-            this.GetObservable(TextProperty)
+            textObservable
         )
         |> ignore
 
+        // Connect events
         textBox.LostFocus.Add(onEditFinished)
         textBox.KeyDown.Add(fun evt ->
             match evt.Key = Input.Key.Enter with
