@@ -188,14 +188,17 @@ type Spreadsheet() as this =
                         ShowOutline = false
                     )
                     |> fun cell ->
-                        let border = Border()
-                        border.Child <- cell
-                        border.Bind(Border.BorderBrushProperty, borderBrush) |> ignore
-                        border.BorderThickness <-
-                            match rowIdx with
-                            | 0 -> Thickness(0, 1, 0, 1)
-                            | _ -> Thickness(0, 0, 0, 1)
+                        let border =
+                            Border(
+                                Child = cell,
+                                BorderThickness = (
+                                    match rowIdx with
+                                    | 0 -> Thickness(0, 1, 0, 1)
+                                    | _ -> Thickness(0, 0, 0, 1)
+                                )
+                            )
 
+                        border.Bind(Border.BorderBrushProperty, borderBrush) |> ignore
                         border
                 )
             )
@@ -210,7 +213,10 @@ type Spreadsheet() as this =
                     rowsItemsControl column
             ),
             ItemsPanel = FuncTemplate<Panel>(fun () ->
-                StackPanel(Orientation = Layout.Orientation.Horizontal)
+                StackPanel(
+                    Orientation = Layout.Orientation.Horizontal,
+                    Margin = Thickness 1
+                )
             )
         )
 
